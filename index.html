@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบรับสมัครสอบนานาชาติ - สสนชพศควปทปจ.</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --purple-deep: #2D004B;
+            --purple-main: #4B0082;
+            --gold-main: #D4AF37;
+            --gold-bright: #FFD700;
+            --bg-color: #F4F4F9;
+        }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background: linear-gradient(135deg, var(--purple-deep) 0%, #1a002e 100%);
+            margin: 0;
+            padding: 40px 20px;
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 750px;
+            background: white;
+            margin: 0 auto;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            overflow: hidden;
+            border: 2px solid var(--gold-main);
+        }
+
+        .header {
+            background: linear-gradient(to right, var(--purple-main), var(--purple-deep));
+            color: var(--gold-main);
+            padding: 40px 20px;
+            text-align: center;
+            border-bottom: 5px solid var(--gold-main);
+        }
+
+        .header h1 { margin: 0; font-size: 22px; text-transform: uppercase; letter-spacing: 1px; }
+        .header p { margin: 10px 0 0; color: #eee; font-size: 14px; }
+
+        .content { padding: 40px; }
+
+        .info-section {
+            background: #fdfaf0;
+            border-left: 5px solid var(--gold-main);
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 0 10px 10px 0;
+        }
+
+        .info-section h2 { color: var(--purple-main); font-size: 18px; margin-top: 0; }
+        .info-section ul { padding-left: 20px; font-size: 14px; line-height: 1.6; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .full-width { grid-column: span 2; }
+
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; color: var(--purple-main); font-size: 14px; }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            box-sizing: border-box;
+            transition: 0.3s;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--gold-main);
+            outline: none;
+            background-color: #fffdf5;
+        }
+
+        .btn-submit {
+            background: linear-gradient(45deg, var(--gold-main), var(--gold-bright));
+            color: var(--purple-deep);
+            border: none;
+            padding: 18px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: 0.4s;
+            text-transform: uppercase;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(212, 175, 55, 0.4);
+            filter: brightness(1.1);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 11px;
+            color: #aaa;
+        }
+
+        @media (max-width: 600px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .full-width { grid-column: span 1; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>สถาบันการสอบนานาชาติ สสนชพศควปทปจ.</h1>
+        <p>สำนักงานบริหารโครงการพิเศษ | ระบบรับสมัครปีการศึกษา ๒๕๖๙</p>
+    </div>
+
+    <div class="content">
+        <div class="info-section">
+            <h2>📜 ข้อตกลงและระเบียบการสอบ (Rules & Regulations)</h2>
+            <ul>
+                <li><strong>อุปกรณ์ที่อนุญาต:</strong> ดินสอ 2B-6B และนาฬิกาประเภทเข็ม (Analog) เท่านั้น</li>
+                <li><strong>การแต่งกาย:</strong> ชุดนักเรียนตามระเบียบสถาบันต้นสังกัด</li>
+                <li><strong>วินัย:</strong> ห้ามเข้าสายเกิน 15 นาที และต้องลงนามยืนยันตัวตนทุกกรณี</li>
+                <li><strong>สถานที่:</strong> จัดการสอบ ณ ศูนย์สอบประจำจังหวัด (มหาวิทยาลัยเชียงใหม่)</li>
+            </ul>
+        </div>
+
+        <form action="https://formspree.io/f/YOUR_ID_HERE" method="POST">
+            
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <label>อีเมลผู้สมัคร (สำหรับการแจ้งเตือน)</label>
+                    <input type="email" name="email" required placeholder="example@email.com">
+                </div>
+
+                <div class="form-group">
+                    <label>ชื่อ-นามสกุล ผู้สมัคร</label>
+                    <input type="text" name="student_name" required>
+                </div>
+
+                <div class="form-group">
+                    <label>เลขประจำตัวประชาชน (13 หลัก)</label>
+                    <input type="text" name="id_card" required maxlength="13" pattern="\d{13}">
+                </div>
+
+                <div class="form-group">
+                    <label>ชื่อ-นามสกุล บิดา</label>
+                    <input type="text" name="father_name" required>
+                </div>
+
+                <div class="form-group">
+                    <label>ชื่อ-นามสกุล มารดา</label>
+                    <input type="text" name="mother_name" required>
+                </div>
+
+                <div class="form-group">
+                    <label>เลขที่ใบ ปพ.6</label>
+                    <input type="text" name="pwp6" placeholder="ระบุเลขที่เอกสาร" required>
+                </div>
+
+                <div class="form-group">
+                    <label>เลขที่ใบ ปพ.7</label>
+                    <input type="text" name="pwp7" placeholder="ระบุเลขที่เอกสาร" required>
+                </div>
+
+                <div class="form-group full-width">
+                    <label>การยืนยันการเดินทาง</label>
+                    <select name="travel_consent" required>
+                        <option value="">-- ท่านยินยอมเดินทางมาสอบ ณ มหาวิทยาลัยเชียงใหม่ หรือไม่? --</option>
+                        <option value="Yes">ข้าพเจ้ายินยอมเดินทางมาสอบตามวันและเวลาที่กำหนด</option>
+                        <option value="No">ไม่ยินยอม</option>
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit">ส่งใบสมัครสอบอย่างเป็นทางการ</button>
+        </form>
+    </div>
+
+    <div class="footer">
+        เอกสารนี้จัดทำโดยระบบอัตโนมัติของสถาบันฯ พัฒนาศักยภาพคณิตศาสตร์วิทยาศาสตร์ประยุกต์เทคโนโลยีปัญญาอย่างจริยธรรมศาสตร์
+    </div>
+</div>
+
+</body>
+</html>
