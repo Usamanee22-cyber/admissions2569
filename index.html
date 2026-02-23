@@ -57,6 +57,18 @@
         .info-section h2 { color: var(--purple-main); font-size: 18px; margin-top: 0; }
         .info-section ul { padding-left: 20px; font-size: 14px; line-height: 1.6; }
 
+        /* ส่วนชำระเงินที่เพิ่มใหม่ */
+        .payment-box {
+            background: #f0f8ff;
+            border: 2px dashed var(--purple-main);
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .payment-box h3 { color: var(--purple-main); margin-top: 0; font-size: 16px; }
+        .bank-details { font-weight: bold; color: #d32f2f; font-size: 18px; margin: 10px 0; }
+
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .full-width { grid-column: span 2; }
 
@@ -131,6 +143,13 @@
             </ul>
         </div>
 
+        <div class="payment-box">
+            <h3>💳 รายละเอียดการชำระค่าธรรมเนียมสอบ</h3>
+            <p style="font-size: 14px; margin-bottom: 5px;">กรุณาโอนเงินจำนวน <strong>250 บาท</strong> ไปยังบัญชีมหาวิทยาลัย:</p>
+            <div class="bank-details">ธนาคารไทยพาณิชย์ (SCB)<br>ชื่อบัญชี: มหาวิทยาลัยเชียงใหม่<br>เลขที่บัญชี: xxx-x-xxxxx-x</div>
+            <p style="font-size: 12px; color: #666;">*โปรดเก็บหลักฐานการโอนเงินเพื่อแนบในใบสมัครด้านล่าง*</p>
+        </div>
+
         <form action="https://formspree.io/f/xreayblz" method="POST">
             
             <div class="form-grid">
@@ -170,6 +189,11 @@
                 </div>
 
                 <div class="form-group full-width">
+                    <label>หลักฐานการชำระเงิน (ลิงก์รูปภาพสลิป หรือ ชื่อไฟล์รูปภาพ)</label>
+                    <input type="text" name="payment_slip" placeholder="เช่น https://imgur.com/your-slip" required>
+                </div>
+
+                <div class="form-group full-width">
                     <label>การยืนยันการเดินทาง</label>
                     <select name="travel_consent" required>
                         <option value="">-- ท่านยินยอมเดินทางมาสอบ ณ มหาวิทยาลัยเชียงใหม่ หรือไม่? --</option>
@@ -189,4 +213,5 @@
 </div>
 
 </body>
+</html>
 </html>
