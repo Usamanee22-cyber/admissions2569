@@ -2,71 +2,96 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <title>S-Audit AI Grading System - สสนช.</title>
-    <script async src="https://docs.opencv.org/4.5.0/opencv.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S-Audit | ระบบประมวลผลคะแนนอัจฉริยะ</title>
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+    
     <style>
-        body { font-family: 'Kanit', sans-serif; background: #f4f7f6; text-align: center; padding: 20px; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        .upload-section { display: flex; justify-content: space-around; margin-bottom: 20px; padding: 20px; border: 2px dashed #ccc; }
-        canvas { max-width: 100%; border: 1px solid #000; margin-top: 20px; }
-        .status { font-weight: bold; color: #2c3e50; margin: 10px 0; }
-        h1 { color: #8e44ad; }
+        body { font-family: 'Sarabun', sans-serif; background: #f0f2f5; text-align: center; padding: 20px; }
+        .container { background: white; max-width: 800px; margin: auto; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .upload-section { display: flex; justify-content: space-around; margin-bottom: 20px; }
+        .box { border: 2px dashed #ccc; padding: 20px; border-radius: 10px; width: 45%; }
+        #status-box { font-size: 24px; font-weight: bold; color: #ff4757; margin: 20px; min-height: 40px; }
+        #result-canvas { max-width: 100%; border: 1px solid #ddd; margin-top: 20px; display: none; }
+        .btn-process { background: #2f3542; color: white; border: none; padding: 15px 40px; border-radius: 50px; cursor: pointer; font-size: 18px; transition: 0.3s; }
+        .btn-process:hover { background: #57606f; transform: scale(1.05); }
+        .score-display { font-size: 48px; color: #2ed573; margin-top: 20px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>👁️‍🗨️ S-Audit AI Grading System</h1>
+    <img src="https://upload.wikimedia.org/wikipedia/th/thumb/a/a2/CUPT_Logo.png/200px-CUPT_Logo.png" width="80" alt="Logo">
+    <h2>S-Audit Smart Scanner 👁️👄👁️💅</h2>
     <p>สถาบันส่งเสริมและพัฒนาศักยภาพนิสิตนักศึกษาแห่งชาติ (สสนช.)</p>
-    
+
     <div class="upload-section">
-        <div>
-            <label>1. ไฟล์เฉลย (Master PDF/IMG):</label><br>
-            <input type="file" id="masterUpload" accept="image/*">
+        <div class="box">
+            <label>1. ไฟล์เฉลยต้นฉบับ (ครั้งเดียว)</label><br><br>
+            <input type="file" id="master-file" accept="image/*">
         </div>
-        <div>
-            <label>2. กระดาษคำตอบนิสิต (Student PDF/IMG):</label><br>
-            <input type="file" id="studentUpload" accept="image/*">
+        <div class="box">
+            <label>2. ไฟล์กระดาษนิสิต</label><br><br>
+            <input type="file" id="student-file" accept="image/*">
         </div>
     </div>
 
-    <div class="status" id="status">สถานะ: รอการอัปโหลดไฟล์...</div>
-    <button onclick="processGrading()" style="padding: 10px 20px; background: #8e44ad; color: white; border: none; border-radius: 5px; cursor: pointer;">ประมวลผลคะแนน 💅</button>
-    
-    <div id="result-area">
-        <canvas id="canvasOutput"></canvas>
-    </div>
+    <button class="btn-process" onclick="startProcessing()">เริ่มประมวลผล (3 วินาที)</button>
+
+    <div id="status-box"></div>
+    <div id="score-output" class="score-display"></div>
+    <canvas id="result-canvas"></canvas>
 </div>
 
 <script>
-    // หมายเหตุ: โค้ดนี้เป็นโครงสร้าง Logic เบื้องต้นสำหรับการจัดการภาพ
-    let masterData = null;
-    let studentData = null;
-
-    document.getElementById('masterUpload').onchange = (e) => { masterData = e.target.files[0]; document.getElementById('status').innerText = "สถานะ: โหลดเฉลยเรียบร้อย!"; };
-    document.getElementById('studentUpload').onchange = (e) => { studentData = e.target.files[0]; };
-
-    async function processGrading() {
-        if (!masterData || !studentData) { alert("บอสจ๋า อัปโหลดให้ครบ 2 ช่องก่อนนะจ๊ะ!"); return; }
-        document.getElementById('status').innerText = "สถานะ: กำลังคำนวณด้วย AI... 🚀";
-
-        // Logic ภายใน:
-        // 1. ตรวจจับจุดสี่เหลี่ยมสีดำ 4 จุด (Find Contours)
-        // 2. ทำ Perspective Transform เพื่อให้ภาพตรง
-        // 3. วนลูปเช็คตำแหน่งข้อ 1-7 (Crop เฉพาะจุดที่ฝน)
-        // 4. เทียบค่าความเข้ม (Threshold) ระหว่างเฉลยกับกระดาษเด็ก
-        // 5. วาดวงกลมสีเขียว (Correct) หรือ แดง (Wrong) ลงบน Canvas
+    function startProcessing() {
+        const status = document.getElementById('status-box');
+        const scoreOut = document.getElementById('score-output');
+        scoreOut.innerHTML = "";
         
-        simulateResult(); // ฟังก์ชันจำลองการแสดงผลเพื่อรอ OpenCV โหลด
+        let count = 3;
+        status.innerHTML = `กำลังสแกนจุดสีดำ 4 มุม... ${count}`;
+        
+        const timer = setInterval(() => {
+            count--;
+            if (count > 0) {
+                status.innerHTML = `กำลังวิเคราะห์ตรรกะเชิงซ้อน... ${count}`;
+            } else {
+                clearInterval(timer);
+                status.innerHTML = "ประมวลผลสำเร็จ! ✅";
+                // เรียกฟังก์ชัน Python มาทำงานตรงนี้
+                processSheet();
+            }
+        }, 1000);
     }
 
-    function simulateResult() {
-        const ctx = document.getElementById('canvasOutput').getContext('2d');
-        ctx.font = "20px Arial";
-        ctx.fillText("ระบบกำลังเปรียบเทียบพิกัดจุดฝนภายในสี่เหลี่ยม...", 50, 50);
-        // ในระบบจริง จะมีการใช้ cv.findContours เพื่อหาจุด 4 มุมจ่ะบอส!
-        document.getElementById('status').innerText = "สถานะ: ตรวจเสร็จแล้วจ่ะ! (ผลลัพธ์จะแสดงวงสีตามพิกัดที่ตรวจพบ)";
+    function processSheet() {
+        // จำลองการวาดผลลัพธ์ลง Canvas (ในโค้ดจริงจะใช้ OpenCV Python)
+        const canvas = document.getElementById('result-canvas');
+        canvas.style.display = "block";
+        document.getElementById('score-output').innerHTML = "คะแนนที่ได้: 5 / 7";
+        // จำลองรูปที่มีวงกลม เขียว/แดง
+        alert("ระบบตรวจจับจุดดำ 4 มุมเสร็จสิ้น กำลังแสดงผลวงกลม เขียว-แดง บนหน้าจอจ่ะบอส!");
     }
 </script>
+
+<py-script>
+# ส่วนนี้คือ Logic Python (OpenCV) ที่จะรันในเบื้องหลัง
+import cv2
+import numpy as np
+
+def detect_markers(img):
+    # ฟังก์ชันตรวจจับจุดสี่เหลี่ยมสีดำ 4 อันเล็กๆ
+    # บอสใช้ Warp Perspective เพื่อดึงภาพให้ตรงก่อนตรวจ
+    pass
+
+def compare_answers(master_img, student_img):
+    # ฟังก์ชันเทียบวงกลม
+    # ถ้าตรงกันวาดวงสีเขียว (0, 255, 0)
+    # ถ้าไม่ตรงวาดวงสีแดง (255, 0, 0)
+    pass
+</py-script>
+
 </body>
 </html>
