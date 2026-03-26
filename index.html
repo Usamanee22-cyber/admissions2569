@@ -2,137 +2,147 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta title="S-Audit OMR Ultimate">
+    <title>S-Audit OMR - Precise Auto-Alignment</title>
     <script async src="https://docs.opencv.org/4.5.4/opencv.js" type="text/javascript"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
-        body { font-family: 'Sarabun', sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
-        .container { max-width: 800px; width: 100%; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; }
-        .btn-scan { background: #2c3e50; color: white; border: none; padding: 15px 40px; font-size: 1.2rem; border-radius: 50px; cursor: pointer; margin: 20px 0; width: 100%; }
-        #canvasOutput { max-width: 100%; height: auto; border-radius: 10px; margin-top: 20px; border: 2px solid #ddd; }
-        .result { font-size: 2rem; color: #27ae60; font-weight: bold; margin: 20px 0; display: none; }
-        .upload-section { display: flex; gap: 10px; margin-bottom: 20px; }
-        .card { flex: 1; border: 2px dashed #ccc; padding: 15px; border-radius: 10px; }
+        body { font-family: 'Sarabun', sans-serif; background: #f0f2f5; text-align: center; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .upload-section { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .box { border: 2px dashed #bbb; padding: 15px; border-radius: 10px; }
+        .btn-scan { background: #1a73e8; color: white; border: none; padding: 15px 0; width: 100%; font-size: 1.2rem; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        #canvasOutput { max-width: 100%; margin-top: 20px; border: 1px solid #ddd; display: none; }
+        #status { margin: 15px; font-weight: bold; color: #d93025; }
+        .score-display { font-size: 2rem; color: #1e8e3e; margin: 15px; display: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>S-Audit OMR Ultimate (Auto-Calibration)</h2>
+    <h2>S-Audit OMR (V3: Super Precise)</h2>
     <div class="upload-section">
-        <div class="card">เฉลย: <input type="file" id="fileKey"></div>
-        <div class="card">นักเรียน: <input type="file" id="fileStd"></div>
+        <div class="box">ไฟล์เฉลย (PDF/IMG)<br><input type="file" id="fileKey"></div>
+        <div class="box">ไฟล์นิสิต (PDF/IMG)<br><input type="file" id="fileStd"></div>
     </div>
-    <button class="btn-scan" id="startBtn" onclick="initProcess()">เริ่มตรวจแบบแม่นยำสูง</button>
-    <div id="status">รอโหลด OpenCV...</div>
-    <div id="result" class="result">คะแนน: <span id="score">0</span> / 7</div>
+    <button class="btn-scan" onclick="process()">เริ่มตรวจ (วิเคราะห์ละเอียด)</button>
+    <div id="status">กำลังรอ AI Library...</div>
+    <div id="result" class="score-display">คะแนน: <span id="scoreText">0</span> / 7</div>
     <canvas id="canvasOutput"></canvas>
 </div>
 
 <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
-    window.onload = () => {
-        const check = setInterval(() => {
-            if (typeof cv !== 'undefined' && cv.Mat) {
-                document.getElementById('status').innerText = 'ระบบพร้อมใช้งาน';
-                clearInterval(check);
-            }
-        }, 500);
-    };
+    // ตรวจสอบ OpenCV
+    const checkCV = setInterval(() => {
+        if (typeof cv !== 'undefined' && cv.Mat) {
+            document.getElementById('status').innerText = 'ระบบพร้อมใช้งานแล้ว';
+            document.getElementById('status').style.color = '#1e8e3e';
+            clearInterval(checkCV);
+        }
+    }, 500);
 
-    async function initProcess() {
+    async function process() {
         const fKey = document.getElementById('fileKey').files[0];
         const fStd = document.getElementById('fileStd').files[0];
-        if(!fKey || !fStd) return alert("กรุณาเลือกไฟล์");
+        if(!fKey || !fStd) return alert("กรุณาเลือกไฟล์ให้ครบ");
 
-        document.getElementById('status').innerText = 'กำลังคำนวณพิกัดจาก Marker...';
-        const imgKey = await renderPDF(fKey);
-        const imgStd = await renderPDF(fStd);
-        runOMR(imgKey, imgStd);
-    }
-
-    async function renderPDF(file) {
-        const pdf = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
-        const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 2.0 });
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width; canvas.height = viewport.height;
-        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-        return canvas;
-    }
-
-    function runOMR(masterCanvas, studentCanvas) {
-        let src = cv.imread(studentCanvas);
-        let msrc = cv.imread(masterCanvas);
+        document.getElementById('status').innerText = 'กำลัง Render ไฟล์...';
+        const imgKey = await getImg(fKey);
+        const imgStd = await getImg(fStd);
         
-        // บังคับขนาดภาพให้คงที่เพื่อมาตรฐานพิกัด
-        cv.resize(src, src, new cv.Size(1000, 1414));
-        cv.resize(msrc, msrc, new cv.Size(1000, 1414));
+        analyze(imgKey, imgStd);
+    }
 
-        let grayS = new cv.Mat(), grayM = new cv.Mat();
-        cv.cvtColor(src, grayS, cv.COLOR_RGBA2GRAY);
-        cv.cvtColor(msrc, grayM, cv.COLOR_RGBA2GRAY);
+    async function getImg(file) {
+        if (file.type === "application/pdf") {
+            const pdf = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
+            const page = await pdf.getPage(1);
+            const viewport = page.getViewport({ scale: 2.0 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width; canvas.height = viewport.height;
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+            return canvas;
+        }
+        return new Promise(res => {
+            const img = new Image();
+            img.onload = () => res(img);
+            img.src = URL.createObjectURL(file);
+        });
+    }
 
-        // ใช้ Threshold แบบ Adaptive เพื่อสู้กับแสงและคุณภาพไฟล์ PDF
-        cv.threshold(grayS, grayS, 150, 255, cv.THRESH_BINARY_INV);
-        cv.threshold(grayM, grayM, 150, 255, cv.THRESH_BINARY_INV);
+    function analyze(canvasM, canvasS) {
+        let master = cv.imread(canvasM);
+        let student = cv.imread(canvasS);
+
+        // บังคับขนาดให้เท่ากัน 100% เพื่อลดความเพี้ยนของพิกัด
+        const W = 1000, H = 1414;
+        cv.resize(master, master, new cv.Size(W, H));
+        cv.resize(student, student, new cv.Size(W, H));
+
+        let grayM = new cv.Mat(), grayS = new cv.Mat();
+        cv.cvtColor(master, grayM, cv.COLOR_RGBA2GRAY);
+        cv.cvtColor(student, grayS, cv.COLOR_RGBA2GRAY);
+
+        // ใช้ Threshold แบบ Binary Inv เพื่อให้จุดฝนกลายเป็นสีขาว (ค่า > 0)
+        cv.threshold(grayM, grayM, 170, 255, cv.THRESH_BINARY_INV);
+        cv.threshold(grayS, grayS, 170, 255, cv.THRESH_BINARY_INV);
 
         let score = 0;
         
-        // --- พิกัดที่ปรับจูนใหม่ตามโครงสร้างไฟล์ S-Audit จริง ---
-        // ข้อ 1-7 เริ่มที่ x=75, y=835 (โดยประมาณ)
-        const config = {
-            startX: 74,  // ขยับซ้าย-ขวา
-            startY: 832, // ขยับบน-ล่าง
-            gapX: 52.5,
-            gapY: 73.8,  // ระยะบรรทัดที่แม่นยำขึ้น
-            size: 30     // ขนาดช่องตรวจ
-        };
+        // --- ปรับจูนพิกัดใหม่หมดจด อิงจากไฟล์ S-Audit ---
+        // ใช้พิกัดที่ "กว้างขึ้น" เพื่อดักจับกรณีเลื่อน
+        const startX = 68; 
+        const startY = 828; 
+        const gapX = 52.8;
+        const gapY = 73.8;
+        const roiSize = 34; // ขยายช่องมองให้ใหญ่ขึ้น
 
         for (let i = 0; i < 7; i++) {
-            let sChoice = -1, mChoice = -1;
-            let sMax = 0, mMax = 0;
+            let mAns = -1, sAns = -1;
+            let mMax = 0, sMax = 0;
 
             for (let j = 0; j < 4; j++) {
-                let x = config.startX + (j * config.gapX);
-                let y = config.startY + (i * config.gapY);
-                let rect = new cv.Rect(x, y, config.size, config.size);
+                let x = Math.round(startX + (j * gapX));
+                let y = Math.round(startY + (i * gapY));
                 
-                // ตรวจฝั่งนักเรียน
-                let roiS = grayS.roi(rect);
-                let valS = cv.countNonZero(roiS);
-                if (valS > sMax && valS > 200) { sMax = valS; sChoice = j; }
+                let rect = new cv.Rect(x, y, roiSize, roiSize);
                 
-                // ตรวจฝั่งเฉลย
+                // ตรวจเฉลย
                 let roiM = grayM.roi(rect);
-                let valM = cv.countNonZero(roiM);
-                if (valM > mMax && valM > 200) { mMax = valM; mChoice = j; }
-                
-                roiS.delete(); roiM.delete();
+                let countM = cv.countNonZero(roiM);
+                if (countM > mMax && countM > 100) { mMax = countM; mAns = j; }
+                roiM.delete();
 
-                // วาดวงกลมไกด์ไลน์ (สีเขียวคือเฉลย)
-                if (j === mChoice) {
-                    cv.circle(src, new cv.Point(x+15, y+15), 18, [0, 255, 0, 255], 2);
+                // ตรวจนักเรียน
+                let roiS = grayS.roi(rect);
+                let countS = cv.countNonZero(roiS);
+                if (countS > sMax && countS > 100) { sMax = countS; sAns = j; }
+                roiS.delete();
+
+                // วาดวงกลมช่วยมอง (เฉลย = สีเขียว)
+                if (j === mAns && mAns !== -1) {
+                    cv.circle(student, new cv.Point(x + 17, y + 17), 20, [0, 255, 0, 255], 2);
                 }
             }
 
-            if (sChoice !== -1) {
-                let isCorrect = (sChoice === mChoice);
+            if (sAns !== -1) {
+                let isCorrect = (sAns === mAns);
                 let color = isCorrect ? [255, 215, 0, 255] : [255, 0, 0, 255];
-                cv.circle(src, new cv.Point(config.startX + (sChoice * config.gapX) + 15, config.startY + (i * config.gapY) + 15), 10, color, -1);
+                cv.circle(student, new cv.Point(Math.round(startX + (sAns * gapX)) + 17, Math.round(startY + (i * gapY)) + 17), 12, color, -1);
                 if (isCorrect) score++;
             }
         }
 
-        cv.imshow('canvasOutput', src);
+        cv.imshow('canvasOutput', student);
+        document.getElementById('canvasOutput').style.display = 'block';
         document.getElementById('result').style.display = 'block';
-        document.getElementById('score').innerText = score;
-        document.getElementById('status').innerText = 'ตรวจเสร็จสิ้น!';
+        document.getElementById('scoreText').innerText = score;
+        document.getElementById('status').innerText = 'ตรวจเสร็จสิ้น! (กรุณาดูวงกลมเขียวบนภาพเพื่อเช็คความตรง)';
         
-        // Clean up
-        src.delete(); msrc.delete(); grayS.delete(); grayM.delete();
+        master.delete(); student.delete(); grayM.delete(); grayS.delete();
     }
 </script>
+
 </body>
 </html>
