@@ -2,155 +2,106 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <title>S-Audit OMR v3.5 | ระบบสแกนพิกัดสมบูรณ์แบบ</title>
+    <title>S-Audit OMR v4.0 | แก้ไขพิกัดตรงจุด</title>
     <script async src="https://docs.opencv.org/4.5.0/opencv.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;500&display=swap" rel="stylesheet">
     <style>
-        :root { --purple: #4B0082; --gold: #FFD700; --blue: #007bff; --green: #28a745; }
-        body { font-family: 'Kanit', sans-serif; background: #f8f9fa; padding: 20px; }
-        .container { background: white; padding: 40px; border-radius: 30px; box-shadow: 0 15px 50px rgba(0,0,0,0.15); max-width: 1000px; margin: auto; border: 4px solid var(--purple); }
-        h1 { color: var(--purple); border-bottom: 3px solid var(--gold); padding-bottom: 10px; }
-        .upload-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 30px 0; }
-        .box { border: 2px dashed var(--purple); padding: 20px; border-radius: 15px; background: #fafafa; }
-        button { background: var(--purple); color: var(--gold); border: 2px solid var(--gold); padding: 15px 40px; border-radius: 50px; cursor: pointer; font-size: 20px; font-weight: bold; transition: 0.3s; }
-        button:hover { transform: scale(1.05); box-shadow: 0 5px 15px rgba(75,0,130,0.3); }
-        #countdown { font-size: 80px; color: var(--purple); font-weight: bold; display: none; margin: 20px; }
-        #result-area { margin-top: 30px; display: none; }
-        canvas { max-width: 100%; border-radius: 15px; border: 2px solid var(--purple); margin-top: 20px; }
-        .legend { display: flex; justify-content: center; gap: 15px; margin: 15px 0; font-weight: bold; }
-        .score-badge { font-size: 32px; background: var(--purple); color: var(--gold); padding: 10px 30px; border-radius: 15px; display: inline-block; margin-bottom: 20px; }
+        :root { --purple: #4B0082; --gold: #FFD700; }
+        body { font-family: 'Kanit', sans-serif; background: #f4f4f9; text-align: center; padding: 20px; }
+        .container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 900px; margin: auto; border: 3px solid var(--purple); }
+        .score-box { font-size: 40px; color: var(--purple); font-weight: bold; margin: 20px; padding: 10px; border: 2px solid var(--gold); border-radius: 10px; display: inline-block; }
+        canvas { max-width: 100%; border: 1px solid #ccc; margin-top: 20px; }
+        input { margin: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>👑 S-Audit Intelligence OMR v3.5</h1>
-    <p>สถาบันส่งเสริมและพัฒนาศักยภาพนิสิตนักศึกษาแห่งชาติ (สสนช.)</p>
-
-    <div class="upload-section">
-        <div class="box">
-            <strong>📑 ช่องที่ 1: ไฟล์ PDF เฉลย</strong><br><br>
-            <input type="file" id="templatePdf" accept="application/pdf">
-        </div>
-        <div class="box">
-            <strong>✍️ ช่องที่ 2: ไฟล์ PDF นิสิต</strong><br><br>
-            <input type="file" id="studentPdf" accept="application/pdf">
-        </div>
+    <h1>👑 S-Audit OMR v4.0 (Precision Fix)</h1>
+    <div style="margin-bottom: 20px;">
+        <input type="file" id="tFile" accept="application/pdf"> (เฉลย) <br>
+        <input type="file" id="sFile" accept="application/pdf"> (นิสิต)
     </div>
-
-    <button id="startBtn" onclick="initProcess()">เริ่มการ Auditing (3s)</button>
-    <div id="countdown">3</div>
-
-    <div id="result-area">
-        <div id="scoreDisplay" class="score-badge"></div>
-        <div class="legend">
-            <span style="color: var(--blue)">■ ช่องที่นิสิตฝน</span>
-            <span style="color: var(--green)">■ ช่องเฉลย</span>
-            <span style="color: var(--gold)">■ ถูกต้อง (Match)</span>
-        </div>
-        <canvas id="mainCanvas"></canvas>
+    <button onclick="process()">เริ่มตรวจ (3 วินาที)</button>
+    <div id="countdown" style="font-size: 50px; display: none;">3</div>
+    <div id="result" style="display:none;">
+        <div class="score-box" id="scoreText"></div>
+        <canvas id="outputCanvas"></canvas>
     </div>
 </div>
 
 <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
-    async function initProcess() {
-        const tFile = document.getElementById('templatePdf').files[0];
-        const sFile = document.getElementById('studentPdf').files[0];
-        if (!tFile || !sFile) { alert("บอสขาา ใส่ไฟล์ให้ครบทั้ง 2 ช่องก่อนนะจ๊ะ! 💅"); return; }
+    async function process() {
+        const tInput = document.getElementById('tFile').files[0];
+        const sInput = document.getElementById('sFile').files[0];
+        if(!tInput || !sInput) return alert("ใส่ไฟล์ก่อนจ่ะบอส!");
 
-        document.getElementById('startBtn').style.display = 'none';
-        const cd = document.getElementById('countdown');
-        cd.style.display = 'block';
-        
-        let count = 3;
-        const timer = setInterval(async () => {
-            count--;
-            cd.innerText = count;
-            if (count === 0) {
-                clearInterval(timer);
-                cd.style.display = 'none';
-                await runOMR(tFile, sFile);
-            }
+        document.getElementById('countdown').style.display = 'block';
+        let c = 3;
+        const itv = setInterval(async () => {
+            c--; document.getElementById('countdown').innerText = c;
+            if(c==0) { clearInterval(itv); document.getElementById('countdown').style.display='none'; await run(); }
         }, 1000);
     }
 
     async function pdfToMat(file) {
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        const buf = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument(buf).promise;
         const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 2.0 });
+        const view = page.getViewport({ scale: 2.0 }); // เพิ่มความชัด
         const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+        canvas.width = view.width; canvas.height = view.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: view }).promise;
         return cv.imread(canvas);
     }
 
-    async function runOMR(tFile, sFile) {
-        const tMat = await pdfToMat(tFile);
-        const sMat = await pdfToMat(sFile);
-        const outMat = sMat.clone();
-        
-        // แปลงเป็น Gray เพื่อตรวจความเข้ม
-        let tGray = new cv.Mat();
-        let sGray = new cv.Mat();
+    async function run() {
+        let tMat = await pdfToMat(document.getElementById('tFile').files[0]);
+        let sMat = await pdfToMat(document.getElementById('sFile').files[0]);
+        let out = sMat.clone();
+
+        let tGray = new cv.Mat(), sGray = new cv.Mat();
         cv.cvtColor(tMat, tGray, cv.COLOR_RGBA2GRAY);
         cv.cvtColor(sMat, sGray, cv.COLOR_RGBA2GRAY);
-        cv.threshold(sGray, sGray, 150, 255, cv.THRESH_BINARY_INV);
-        cv.threshold(tGray, tGray, 150, 255, cv.THRESH_BINARY_INV);
+        cv.threshold(tGray, tGray, 180, 255, cv.THRESH_BINARY_INV);
+        cv.threshold(sGray, sGray, 180, 255, cv.THRESH_BINARY_INV);
 
         let score = 0;
-        
-        // พิกัดโดยประมาณ (ระบุเป็น % ของความกว้างหน้ากระดาษเพื่อให้ยืดหยุ่น)
-        // บอสจ๋า พิกัด x, y ตรงนี้ต้องตรงกับตำแหน่งในกระดาษ สสนช. นะจ๊ะ
-        // นะโมตั้งค่าเริ่มต้นตามไฟล์ที่บอสส่งมาจ่ะ
-        const startX = sMat.cols * 0.16; // ประมาณช่องซ้ายสุด
-        const startY = sMat.rows * 0.38; 
-        const stepY = sMat.rows * 0.055; // ระยะห่างระหว่างข้อ
+
+        // --- จุดที่บอสต้องปรับ (ถ้าไม่ตรงวงกลม) ---
+        // ปรับเลข 0.165 ขยับ ซ้าย-ขวา | ปรับ 0.380 ขยับ บน-ล่าง
+        const startX_ratio = 0.165; 
+        const startY_ratio = 0.380;
+        const stepY_ratio = 0.057;
 
         for (let i = 0; i < 7; i++) {
-            let y = startY + (i * stepY);
-            let x = startX;
-            let rect = new cv.Rect(x - 25, y - 25, 50, 50);
-            
-            // ตรวจความเข้มในพิกัด
-            let tRoi = tGray.roi(rect);
-            let sRoi = sGray.roi(rect);
+            let x = sMat.cols * startX_ratio;
+            let y = sMat.rows * (startY_ratio + (i * stepY_ratio));
+
+            let rect = new cv.Rect(x - 20, y - 20, 40, 40);
+            let tRoi = tGray.roi(rect), sRoi = sGray.roi(rect);
             
             let tCount = cv.countNonZero(tRoi);
             let sCount = cv.countNonZero(sRoi);
-            
-            let isTMarked = tCount > 300; // เฉลยฝนไว้
-            let isSMarked = sCount > 300; // นิสิตฝนไว้
 
-            // 1. วาดสีเขียว (ช่องเฉลย)
-            if (isTMarked) {
-                cv.rectangle(outMat, new cv.Point(x - 22, y - 22), new cv.Point(x + 22, y + 22), [40, 167, 69, 255], 3);
-            }
-            
-            // 2. วาดสีน้ำเงิน (ช่องนิสิตฝน)
-            if (isSMarked) {
-                cv.rectangle(outMat, new cv.Point(x - 28, y - 28), new cv.Point(x + 28, y + 28), [255, 123, 0, 255], 3); // Blue (BGR)
-            }
-
-            // 3. วาดสีทอง (ถูกเป๊ะ!)
-            if (isTMarked && isSMarked) {
-                cv.rectangle(outMat, new cv.Point(x - 32, y - 32), new cv.Point(x + 32, y + 32), [0, 215, 255, 255], 6); // Gold (BGR)
+            // แสดงผล 3 สีตามสั่ง
+            if (tCount > 100) cv.rectangle(out, new cv.Point(x-18, y-18), new cv.Point(x+18, y+18), [0, 255, 0, 255], 2); // เขียว (เฉลย)
+            if (sCount > 100) cv.rectangle(out, new cv.Point(x-22, y-22), new cv.Point(x+22, y+22), [255, 0, 0, 255], 2); // น้ำเงิน (ฝน)
+            if (tCount > 100 && sCount > 100) {
+                cv.rectangle(out, new cv.Point(x-25, y-25), new cv.Point(x+25, y+25), [0, 215, 255, 255], 4); // ทอง (Match)
                 score++;
             }
-
             tRoi.delete(); sRoi.delete();
         }
 
-        cv.imshow('mainCanvas', outMat);
-        document.getElementById('result-area').style.display = 'block';
-        document.getElementById('scoreDisplay').innerText = `RESULT: ${score} / 7 POINTS`;
+        cv.imshow('outputCanvas', out);
+        document.getElementById('result').style.display = 'block';
+        document.getElementById('scoreText').innerText = `คะแนน: ${score} / 7`;
         
-        tMat.delete(); sMat.delete(); outMat.delete(); tGray.delete(); sGray.delete();
+        tMat.delete(); sMat.delete(); out.delete(); tGray.delete(); sGray.delete();
     }
 </script>
 </body>
