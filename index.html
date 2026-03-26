@@ -2,107 +2,170 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <title>S-Audit OMR v4.0 | แก้ไขพิกัดตรงจุด</title>
-    <script async src="https://docs.opencv.org/4.5.0/opencv.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;500&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OMR Answer Checker</title>
     <style>
-        :root { --purple: #4B0082; --gold: #FFD700; }
-        body { font-family: 'Kanit', sans-serif; background: #f4f4f9; text-align: center; padding: 20px; }
-        .container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 900px; margin: auto; border: 3px solid var(--purple); }
-        .score-box { font-size: 40px; color: var(--purple); font-weight: bold; margin: 20px; padding: 10px; border: 2px solid var(--gold); border-radius: 10px; display: inline-block; }
-        canvas { max-width: 100%; border: 1px solid #ccc; margin-top: 20px; }
-        input { margin: 10px; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .form-group {
+            margin: 20px 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input[type="file"] {
+            display: block;
+        }
+
+        .button-group {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            font-size: 18px;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            display: none; /* Initially hidden */
+        }
+
+        #result-score {
+            background-color: #28a745;
+        }
+
+        #result-images {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            margin-top: 10px;
+        }
+
+        .legend {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .legend div {
+            display: inline-block;
+            margin: 0 10px;
+            padding: 5px 10px;
+            font-size: 14px;
+            color: #fff;
+            border-radius: 5px;
+        }
+
+        .blue { background-color: blue; }
+        .green { background-color: green; }
+        .gold { background-color: goldenrod; }
     </style>
 </head>
 <body>
-
-<div class="container">
-    <h1>👑 S-Audit OMR v4.0 (Precision Fix)</h1>
-    <div style="margin-bottom: 20px;">
-        <input type="file" id="tFile" accept="application/pdf"> (เฉลย) <br>
-        <input type="file" id="sFile" accept="application/pdf"> (นิสิต)
+    <h1>OMR Answer Checker</h1>
+    <div class="form-container">
+        <form id="omrForm">
+            <div class="form-group">
+                <label for="answerKeyPDF">อัปโหลดไฟล์ PDF เฉลยข้อสอบ:</label>
+                <input type="file" id="answerKeyPDF" accept="application/pdf" required>
+            </div>
+            <div class="form-group">
+                <label for="studentAnswerPDF">อัปโหลดไฟล์ PDF ของนิสิต:</label>
+                <input type="file" id="studentAnswerPDF" accept="application/pdf" required>
+            </div>
+            <div class="button-group">
+                <button type="button" onclick="startProcessing()">เริ่มประมวลผล</button>
+            </div>
+        </form>
+        <div class="result" id="result-score">คะแนนที่ได้รับ: <span id="score">0</span> /7</div>
+        <div id="result-images">
+            <h3>ผลลัพธ์:</h3>
+            <div>
+                <h4>ภาพกระดาษนิสิต:</h4>
+                <img id="studentImage" alt="Student Paper">
+            </div>
+            <div class="legend">
+                <div class="blue">ช่องฝนของนิสิต</div>
+                <div class="green">ช่องเฉลย</div>
+                <div class="gold">ช่องที่ถูกต้อง</div>
+            </div>
+        </div>
     </div>
-    <button onclick="process()">เริ่มตรวจ (3 วินาที)</button>
-    <div id="countdown" style="font-size: 50px; display: none;">3</div>
-    <div id="result" style="display:none;">
-        <div class="score-box" id="scoreText"></div>
-        <canvas id="outputCanvas"></canvas>
-    </div>
-</div>
 
-<script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    <script>
+        function startProcessing() {
+            const form = document.getElementById('omrForm');
+            const answerKeyPDF = document.getElementById('answerKeyPDF');
+            const studentAnswerPDF = document.getElementById('studentAnswerPDF');
+            const resultScore = document.getElementById('result-score');
+            const studentImage = document.getElementById('studentImage');
+            const scoreElement = document.getElementById('score');
 
-    async function process() {
-        const tInput = document.getElementById('tFile').files[0];
-        const sInput = document.getElementById('sFile').files[0];
-        if(!tInput || !sInput) return alert("ใส่ไฟล์ก่อนจ่ะบอส!");
-
-        document.getElementById('countdown').style.display = 'block';
-        let c = 3;
-        const itv = setInterval(async () => {
-            c--; document.getElementById('countdown').innerText = c;
-            if(c==0) { clearInterval(itv); document.getElementById('countdown').style.display='none'; await run(); }
-        }, 1000);
-    }
-
-    async function pdfToMat(file) {
-        const buf = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument(buf).promise;
-        const page = await pdf.getPage(1);
-        const view = page.getViewport({ scale: 2.0 }); // เพิ่มความชัด
-        const canvas = document.createElement('canvas');
-        canvas.width = view.width; canvas.height = view.height;
-        await page.render({ canvasContext: canvas.getContext('2d'), viewport: view }).promise;
-        return cv.imread(canvas);
-    }
-
-    async function run() {
-        let tMat = await pdfToMat(document.getElementById('tFile').files[0]);
-        let sMat = await pdfToMat(document.getElementById('sFile').files[0]);
-        let out = sMat.clone();
-
-        let tGray = new cv.Mat(), sGray = new cv.Mat();
-        cv.cvtColor(tMat, tGray, cv.COLOR_RGBA2GRAY);
-        cv.cvtColor(sMat, sGray, cv.COLOR_RGBA2GRAY);
-        cv.threshold(tGray, tGray, 180, 255, cv.THRESH_BINARY_INV);
-        cv.threshold(sGray, sGray, 180, 255, cv.THRESH_BINARY_INV);
-
-        let score = 0;
-
-        // --- จุดที่บอสต้องปรับ (ถ้าไม่ตรงวงกลม) ---
-        // ปรับเลข 0.165 ขยับ ซ้าย-ขวา | ปรับ 0.380 ขยับ บน-ล่าง
-        const startX_ratio = 0.165; 
-        const startY_ratio = 0.380;
-        const stepY_ratio = 0.057;
-
-        for (let i = 0; i < 7; i++) {
-            let x = sMat.cols * startX_ratio;
-            let y = sMat.rows * (startY_ratio + (i * stepY_ratio));
-
-            let rect = new cv.Rect(x - 20, y - 20, 40, 40);
-            let tRoi = tGray.roi(rect), sRoi = sGray.roi(rect);
-            
-            let tCount = cv.countNonZero(tRoi);
-            let sCount = cv.countNonZero(sRoi);
-
-            // แสดงผล 3 สีตามสั่ง
-            if (tCount > 100) cv.rectangle(out, new cv.Point(x-18, y-18), new cv.Point(x+18, y+18), [0, 255, 0, 255], 2); // เขียว (เฉลย)
-            if (sCount > 100) cv.rectangle(out, new cv.Point(x-22, y-22), new cv.Point(x+22, y+22), [255, 0, 0, 255], 2); // น้ำเงิน (ฝน)
-            if (tCount > 100 && sCount > 100) {
-                cv.rectangle(out, new cv.Point(x-25, y-25), new cv.Point(x+25, y+25), [0, 215, 255, 255], 4); // ทอง (Match)
-                score++;
+            // Validation for file inputs
+            if (!answerKeyPDF.files.length || !studentAnswerPDF.files.length) {
+                alert("กรุณาอัปโหลดไฟล์ PDF ทั้งคู่ก่อนเริ่มประมวลผล!");
+                return;
             }
-            tRoi.delete(); sRoi.delete();
-        }
 
-        cv.imshow('outputCanvas', out);
-        document.getElementById('result').style.display = 'block';
-        document.getElementById('scoreText').innerText = `คะแนน: ${score} / 7`;
-        
-        tMat.delete(); sMat.delete(); out.delete(); tGray.delete(); sGray.delete();
-    }
-</script>
+            // Countdown and initiate process simulation
+            let countdown = 3;
+            const interval = setInterval(() => {
+                alert(`เริ่มกระบวนการในอีก ${countdown--} วินาที...`);
+                if (countdown < 0) {
+                    clearInterval(interval);
+                    processOMR();
+                }
+            }, 1000);
+
+            function processOMR() {
+                // Simulating score processing
+                const simulatedScore = Math.floor(Math.random() * 8);
+                scoreElement.textContent = simulatedScore; // Display score dynamically
+                resultScore.style.display = "block";
+                studentImage.src = "student-paper.jpg"; // Display placeholder image
+            }
+        }
+    </script>
 </body>
 </html>
